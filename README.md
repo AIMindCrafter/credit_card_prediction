@@ -1,4 +1,4 @@
-# Credit Card Fraud Detection — Enterprise MLOps Platform
+<img width="1920" height="1080" alt="credit_card_fraude2" src="https://github.com/user-attachments/assets/16fe21b4-2a27-45ed-b17c-fa61437fe604" /># Credit Card Fraud Detection — Enterprise MLOps Platform
 
 ![CI](https://github.com/your-org/credit_card_fraud_Detection/actions/workflows/ci.yml/badge.svg)
 ![CD](https://github.com/your-org/credit_card_fraud_Detection/actions/workflows/cd.yml/badge.svg)
@@ -257,6 +257,13 @@ credit_card_fraud_Detection/
 - **Size**: ~284K transactions, 31 features (Time, V1–V28 PCA, Amount, Class)
 - **Class imbalance**: ~0.17% fraud rate
 - **Note**: `creditcard.csv` is excluded from version control (`.gitignore`)
+
+- 
+<img width="1920" height="1080" alt="credit_card_fraude2" src="https://github.com/user-attachments/assets/3ba8ab91-f449-4b54-b81c-ad216b78e8eb" />
+
+
+<img width="1920" height="1080" alt="credit_fraud_detection" src="https://github.com/user-attachments/assets/ea930f94-c3fb-46b9-a925-98ac9a131edd" />
+
 
 ---
 

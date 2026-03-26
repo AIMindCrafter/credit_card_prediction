@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FraudShield AI — Credit Card Fraud Detection</title>
+  <meta name="description" content="Enterprise-grade real-time credit card fraud detection powered by machine learning." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ══════════════════════════════════════════════════
+       DESIGN TOKENS
+    ══════════════════════════════════════════════════ */
+    :root {
+      --bg:          #080b14;
+      --bg-card:     #0e1322;
+      --bg-glass:    rgba(255,255,255,0.04);
+      --border:      rgba(255,255,255,0.08);
+      --accent:      #6c63ff;
+      --accent-2:    #00d4ff;
+      --success:     #00e899;
+      --danger:      #ff4d6d;
+      --warn:        #ffa83d;
+      --text:        #e8eaf2;
+      --text-muted:  #6b7280;
+      --text-dim:    #9ca3af;
+      --radius:      14px;
+      --shadow:      0 20px 60px rgba(0,0,0,0.5);
+      --glow-accent: 0 0 40px rgba(108,99,255,0.25);
+      --glow-danger: 0 0 40px rgba(255,77,109,0.3);
+      --glow-ok:     0 0 40px rgba(0,232,153,0.25);
+    }
+
+    /* ══════════════════════════════════════════════════
+       RESET & BASE
+    ══════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ══════════════════════════════════════════════════
+       LAYOUT
+    ══════════════════════════════════════════════════ */
+    .wrapper { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px 60px; }
+
+    /* ══════════════════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════════════════ */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: var(--glow-accent);
+      animation: pulse-icon 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse-icon {
+      0%, 100% { box-shadow: 0 0 20px rgba(108,99,255,0.3); }
+      50%       { box-shadow: 0 0 40px rgba(108,99,255,0.6); }
+    }
+
+    .logo h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo span {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      -webkit-text-fill-color: var(--text-muted);
+    }
+
+    .api-status {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.8rem; color: var(--text-muted);
+      padding: 8px 16px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      backdrop-filter: blur(10px);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: none;
+      transition: background 0.3s;
+    }
+
+    .status-dot.online {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: blink 2s ease-in-out infinite;
+    }
+
+    .status-dot.offline { background: var(--danger); }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ══════════════════════════════════════════════════
+       STAT CARDS (top row)
+    ══════════════════════════════════════════════════ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s, border-color 0.3s;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .stat-card:hover { transform: translateY(-3px); border-color: rgba(108,99,255,0.3); }
+    .stat-card:hover::before { opacity: 1; }
+
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+    .stat-sub   { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ══════════════════════════════════════════════════
+       MAIN GRID
+    ══════════════════════════════════════════════════ */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ══════════════════════════════════════════════════
+       CARD BASE
+    ══════════════════════════════════════════════════ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 1rem; font-weight: 600;
+      color: var(--text);
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title .icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, rgba(108,99,255,0.2), rgba(0,212,255,0.2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+
+    /* ══════════════════════════════════════════════════
+       TABS
+    ══════════════════════════════════════════════════ */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 16px;
+      background: none;
+      border: none;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent), #5a52d5);
+      color: white;
+      box-shadow: 0 4px 12px rgba(108,99,255,0.4);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ══════════════════════════════════════════════════
+       FORM
+    ══════════════════════════════════════════════════ */
+    .form-section-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin: 20px 0 12px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .form-row.two-col { grid-template-columns: 1fr 1fr; }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .field input[type="number"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 8px 10px;
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    .field input::-webkit-outer-spin-button,
+    .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    .field input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+    }
+
+    textarea.batch-input {
+      width: 100%;
+      min-height: 160px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      padding: 12px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      line-height: 1.6;
+    }
+
+    textarea.batch-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+    }
+
+    /* ══════════════════════════════════════════════════
+       BUTTONS
+    ══════════════════════════════════════════════════ */
+    .btn-row { display: flex; gap: 10px; margin-top: 24px; }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .btn:active::after { opacity: 0.1; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #5a52d5 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(108,99,255,0.4);
+      flex: 1;
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(108,99,255,0.5); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+    /* Spinner */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════════════════
+       RESULT PANEL
+    ══════════════════════════════════════════════════ */
+    .result-panel {
+      position: sticky;
+      top: 24px;
+    }
+
+    /* Verdict badge */
+    .verdict {
+      text-align: center;
+      padding: 32px 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      transition: all 0.4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .verdict.idle {
+      background: var(--bg-glass);
+      border: 2px dashed var(--border);
+    }
+
+    .verdict.legitimate {
+      background: linear-gradient(135deg, rgba(0,232,153,0.12), rgba(0,212,255,0.06));
+      border: 2px solid rgba(0,232,153,0.3);
+      box-shadow: var(--glow-ok);
+    }
+
+    .verdict.fraud {
+      background: linear-gradient(135deg, rgba(255,77,109,0.12), rgba(255,168,61,0.06));
+      border: 2px solid rgba(255,77,109,0.3);
+      box-shadow: var(--glow-danger);
+    }
+
+    .verdict-icon {
+      font-size: 3.5rem;
+      margin-bottom: 12px;
+      display: block;
+      animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes pop-in {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .verdict-label {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .verdict.legitimate .verdict-label { color: var(--success); }
+    .verdict.fraud .verdict-label { color: var(--danger); }
+    .verdict.idle .verdict-label { color: var(--text-muted); }
+
+    .verdict-sub { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Probability gauge */
+    .gauge-wrap {
+      margin: 20px 0;
+      padding: 20px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .gauge-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.75rem; color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .gauge-label strong { color: var(--text); font-size: 1rem; font-variant-numeric: tabular-nums; }
+
+    .gauge-bar {
+      height: 10px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .gauge-fill {
+      height: 100%;
+      border-radius: 999px;
+      width: 0%;
+      transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                  background 0.5s ease;
+      background: linear-gradient(90deg, var(--success), var(--accent));
+    }
+
+    /* Meta info */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .meta-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .meta-item .meta-key { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .meta-item .meta-val { font-size: 0.9rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+
+    /* Confidence badge */
+    .confidence {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .confidence.HIGH   { background: rgba(0,232,153,0.15); color: var(--success); border: 1px solid rgba(0,232,153,0.3); }
+    .confidence.MEDIUM { background: rgba(255,168,61,0.15); color: var(--warn);    border: 1px solid rgba(255,168,61,0.3); }
+    .confidence.LOW    { background: rgba(107,114,128,0.15); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ══════════════════════════════════════════════════
+       HISTORY TABLE
+    ══════════════════════════════════════════════════ */
+    .history-section { margin-top: 32px; }
+
+    .history-table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    thead th {
+      background: var(--bg-card);
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.2s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg-glass); }
+
+    td { padding: 12px 16px; font-family: 'JetBrains Mono', monospace; color: var(--text-dim); }
+
+    td:first-child { color: var(--text-muted); font-size: 0.72rem; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .badge.fraud       { background: rgba(255,77,109,0.15); color: var(--danger); border: 1px solid rgba(255,77,109,0.3); }
+    .badge.legitimate  { background: rgba(0,232,153,0.12); color: var(--success); border: 1px solid rgba(0,232,153,0.25); }
+
+    /* ══════════════════════════════════════════════════
+       BATCH RESULTS
+    ══════════════════════════════════════════════════ */
+    .batch-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .batch-stat {
+      text-align: center;
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .batch-stat-val { font-size: 1.6rem; font-weight: 700; }
+    .batch-stat-key { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* ══════════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════════ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      z-index: 9999;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .toast {
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      max-width: 340px;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      animation: slide-up 0.3s ease forwards;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    }
+
+    .toast.error   { background: rgba(255,77,109,0.2); color: #ff8fa3; border-color: rgba(255,77,109,0.3); }
+    .toast.success { background: rgba(0,232,153,0.15); color: #00e899; border-color: rgba(0,232,153,0.3); }
+    .toast.info    { background: rgba(108,99,255,0.2); color: #a5a0ff; border-color: rgba(108,99,255,0.3); }
+
+    @keyframes slide-up {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* ══════════════════════════════════════════════════
+       LOADING OVERLAY
+    ══════════════════════════════════════════════════ */
+    .loading-shimmer {
+      background: linear-gradient(90deg, var(--bg-card) 25%, rgba(255,255,255,0.06) 50%, var(--bg-card) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease infinite;
+    }
+
+    @keyframes shimmer {
+      from { background-position: 200% 0; }
+      to   { background-position: -200% 0; }
+    }
+
+    /* ══════════════════════════════════════════════════
+       UTILITY
+    ══════════════════════════════════════════════════ */
+    .text-muted { color: var(--text-muted); }
+    .text-mono  { font-family: 'JetBrains Mono', monospace; }
+    .mt-16 { margin-top: 16px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .empty-state .em-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ─── HEADER ──────────────────────────────── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <h1>FraudShield AI
+        <span>Enterprise Credit Card Fraud Detection</span>
+      </h1>
+    </div>
+    <div class="api-status" id="apiStatus">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Connecting…</span>
+    </div>
+  </header>
+
+  <!-- ─── STATS ROW ────────────────────────────── -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Analyzed</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-sub">transactions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fraud Detected</div>
+      <div class="stat-value" id="statFraud" style="color:var(--danger)">0</div>
+      <div class="stat-sub">transactions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Fraud Rate</div>
+      <div class="stat-value" id="statRate">0.00%</div>
+      <div class="stat-sub">of total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Latency</div>
+      <div class="stat-value" id="statLatency">—</div>
+      <div class="stat-sub">milliseconds</div>
+    </div>
+  </div>
+
+  <!-- ─── MAIN GRID ────────────────────────────── -->
+  <div class="main-grid">
+
+    <!-- LEFT: Form Panel -->
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <div class="icon">🔍</div>
+          Transaction Analysis
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab-btn active" id="tab-single" onclick="switchTab('single')">Single Transaction</button>
+          <button class="tab-btn" id="tab-batch" onclick="switchTab('batch')">Batch Analysis</button>
+        </div>
+
+        <!-- ─── SINGLE TAB ─── -->
+        <div class="tab-panel active" id="panel-single">
+
+          <div class="form-section-title">🕐 Time & Amount</div>
+          <div class="form-row two-col">
+            <div class="field">
+              <label>Time (seconds)</label>
+              <input type="number" id="f_Time" value="0" step="1" />
+            </div>
+            <div class="field">
+              <label>Amount (USD)</label>
+              <input type="number" id="f_Amount" value="149.62" step="0.01" min="0" />
+            </div>
+          </div>
+
+          <div class="form-section-title">📊 PCA Features V1 – V14</div>
+          <div class="form-row" id="row-v1-v14">
+            <!-- injected by JS -->
+          </div>
+
+          <div class="form-section-title">📊 PCA Features V15 – V28</div>
+          <div class="form-row" id="row-v15-v28">
+            <!-- injected by JS -->
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-predict" onclick="runPredict()">
+              <span class="spinner" id="single-spinner"></span>
+              <span>⚡ Analyze Transaction</span>
+            </button>
+            <button class="btn btn-ghost" onclick="fillSampleLegit()">Sample Legit</button>
+            <button class="btn btn-ghost" onclick="fillSampleFraud()">Sample Fraud</button>
+            <button class="btn btn-ghost" onclick="resetForm()">Reset</button>
+          </div>
+        </div>
+
+        <!-- ─── BATCH TAB ─── -->
+        <div class="tab-panel" id="panel-batch">
+          <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:14px; line-height:1.7;">
+            Paste a JSON array of transaction objects, or use the template below. Each object must include
+            <span class="text-mono" style="color:var(--accent)">Time</span>,
+            <span class="text-mono" style="color:var(--accent)">V1–V28</span>, and
+            <span class="text-mono" style="color:var(--accent)">Amount</span>.
+          </p>
+          <textarea class="batch-input" id="batchInput" placeholder='[
+  {"Time": 0, "V1": -1.36, "V2": -0.07, ... "Amount": 149.62},
+  {"Time": 1, "V1":  1.19, "V2":  0.27, ... "Amount":   2.69}
+]'></textarea>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-batch" onclick="runBatch()">
+              <span class="spinner" id="batch-spinner"></span>
+              <span>⚡ Analyze Batch</span>
+            </button>
+            <button class="btn btn-ghost" onclick="loadBatchSample()">Load Sample</button>
+          </div>
+
+          <!-- Batch results -->
+          <div id="batchResults" style="margin-top:20px; display:none;">
+            <div class="batch-summary">
+              <div class="batch-stat">
+                <div class="batch-stat-val" id="br-total">—</div>
+                <div class="batch-stat-key">Total</div>
+              </div>
+              <div class="batch-stat">
+                <div class="batch-stat-val" id="br-fraud" style="color:var(--danger)">—</div>
+                <div class="batch-stat-key">Fraud</div>
+              </div>
+              <div class="batch-stat">
+                <div class="batch-stat-val" id="br-rate">—</div>
+                <div class="batch-stat-key">Fraud Rate</div>
+              </div>
+            </div>
+            <div class="history-table-wrap">
+              <table>
+                <thead><tr><th>#</th><th>Label</th><th>Probability</th><th>Confidence</th></tr></thead>
+                <tbody id="batchTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── HISTORY ─── -->
+      <div class="history-section">
+        <div class="card">
+          <div class="card-title">
+            <div class="icon">📋</div>
+            Recent Predictions
+            <span style="margin-left:auto;font-size:0.75rem;color:var(--text-muted);font-weight:400;" id="histCount">0 records</span>
+            <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.75rem;margin-left:8px;" onclick="clearHistory()">Clear</button>
+          </div>
+          <div id="historyContainer">
+            <div class="empty-state">
+              <div class="em-icon">📊</div>
+              No predictions yet. Run your first analysis above.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Result Panel -->
+    <div class="result-panel">
+      <div class="card">
+        <div class="card-title">
+          <div class="icon">🎯</div>
+          Detection Result
+        </div>
+
+        <!-- Verdict -->
+        <div class="verdict idle" id="verdict">
+          <span class="verdict-icon">🔮</span>
+          <div class="verdict-label">Awaiting Analysis</div>
+          <div class="verdict-sub">Submit a transaction to see the result</div>
+        </div>
+
+        <!-- Fraud Probability Gauge -->
+        <div class="gauge-wrap">
+          <div class="gauge-label">
+            <span>Fraud Probability</span>
+            <strong id="gaugePct">—</strong>
+          </div>
+          <div class="gauge-bar">
+            <div class="gauge-fill" id="gaugeFill"></div>
+          </div>
+        </div>
+
+        <!-- Meta Grid -->
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="meta-key">Confidence</div>
+            <div class="meta-val" id="metaConfidence">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-key">Latency</div>
+            <div class="meta-val" id="metaLatency">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-key">Model Version</div>
+            <div class="meta-val" id="metaVersion">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-key">Request ID</div>
+            <div class="meta-val" id="metaReqId" style="font-size:0.65rem;word-break:break-all;">—</div>
+          </div>
+        </div>
+
+        <!-- API Info -->
+        <div style="margin-top:20px; padding:14px; background:var(--bg); border:1px solid var(--border); border-radius:10px;">
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px;">API Endpoint</div>
+          <div class="text-mono" style="font-size:0.75rem; color:var(--accent-2); word-break:break-all;" id="apiEndpoint">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════════════ */
+// Auto-detect API base URL:
+// - When served by FastAPI (http://), use relative URLs → same server/port
+// - When opened as file:// directly, fall back to localhost:8000
+const API_BASE = (window.location.protocol === 'file:')
+  ? 'http://localhost:8000'
+  : '';   // relative: fetch('/predict') goes to same host:port as this page
+
+document.getElementById('apiEndpoint').textContent = API_BASE + '/predict';
+
+/* ══════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════ */
+let history = [];
+let totalAnalyzed = 0;
+let totalFraud = 0;
+let latencies = [];
+
+/* ══════════════════════════════════════════════════
+   SAMPLE DATA
+══════════════════════════════════════════════════ */
+const SAMPLE_LEGIT = {
+  Time:0, Amount:149.62,
+  V1:-1.3598071336738, V2:-0.0727811733098497, V3:2.53634673796914,
+  V4:1.37815522427443, V5:-0.338320769942518,  V6:0.462387777762292,
+  V7:0.239598554061257,V8:0.0986979012610507,  V9:0.363786969611213,
+  V10:0.0907941719789, V11:-0.5516,            V12:-0.6178,
+  V13:-0.9913,         V14:-0.3112,            V15:1.4681,
+  V16:-0.4703,         V17:0.2079,             V18:0.0257,
+  V19:0.4039,          V20:0.2514,             V21:-0.0183,
+  V22:0.2778,          V23:-0.1104,            V24:0.0669,
+  V25:0.1285,          V26:-0.1891,            V27:0.1335,
+  V28:-0.0210
+};
+
+const SAMPLE_FRAUD = {
+  Time:406, Amount:2.69,
+  V1:-2.3122265, V2:1.9519938, V3:-1.6097627, V4:3.9979055, V5:-0.5221,
+  V6:-1.4265,    V7:-2.5378,   V8:0.0,        V9:-0.5935,   V10:-4.2897,
+  V11:1.2659,    V12:-2.6923,  V13:0.8178,    V14:-6.1494,  V15:0.1423,
+  V16:-2.2588,   V17:2.2614,   V18:0.5002,    V19:-1.3461,  V20:0.5796,
+  V21:0.1452,    V22:0.1820,   V23:0.3782,    V24:0.1059,   V25:0.4054,
+  V26:0.3145,    V27:0.2330,   V28:0.0911
+};
+
+/* ══════════════════════════════════════════════════
+   BUILD FORM FIELDS
+══════════════════════════════════════════════════ */
+function buildFields() {
+  const row1 = document.getElementById('row-v1-v14');
+  const row2 = document.getElementById('row-v15-v28');
+
+  for (let i = 1; i <= 14; i++) {
+    row1.appendChild(makeField(`V${i}`, SAMPLE_LEGIT[`V${i}`]));
+  }
+  for (let i = 15; i <= 28; i++) {
+    row2.appendChild(makeField(`V${i}`, SAMPLE_LEGIT[`V${i}`]));
+  }
+}
+
+function makeField(name, defaultVal = 0) {
+  const div = document.createElement('div');
+  div.className = 'field';
+  div.innerHTML = `
+    <label>${name}</label>
+    <input type="number" id="f_${name}" value="${defaultVal}" step="0.0001" />
+  `;
+  return div;
+}
+
+buildFields();
+
+/* ══════════════════════════════════════════════════
+   FORM HELPERS
+══════════════════════════════════════════════════ */
+function fillForm(data) {
+  Object.entries(data).forEach(([k, v]) => {
+    const el = document.getElementById(`f_${k}`);
+    if (el) el.value = v;
+  });
+}
+
+function fillSampleLegit() { fillForm(SAMPLE_LEGIT); showToast('Loaded legitimate sample transaction', 'info'); }
+function fillSampleFraud()  { fillForm(SAMPLE_FRAUD);  showToast('Loaded fraud sample transaction', 'info'); }
+
+function resetForm() {
+  const fields = ['Time','Amount',...Array.from({length:28},(_,i)=>`V${i+1}`)];
+  fields.forEach(f => { const el = document.getElementById(`f_${f}`); if(el) el.value = 0; });
+  resetResult();
+}
+
+function getFormData() {
+  const fields = ['Time','Amount',...Array.from({length:28},(_,i)=>`V${i+1}`)];
+  const obj = {};
+  for (const f of fields) {
+    const val = parseFloat(document.getElementById(`f_${f}`)?.value);
+    if (isNaN(val)) throw new Error(`Invalid value for field ${f}`);
+    obj[f] = val;
+  }
+  return obj;
+}
+
+/* ══════════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════════ */
+function switchTab(tab) {
+  ['single','batch'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`panel-${t}`).classList.toggle('active', t === tab);
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   API CALLS
+══════════════════════════════════════════════════ */
+async function runPredict() {
+  let data;
+  try { data = getFormData(); }
+  catch (e) { showToast(e.message, 'error'); return; }
+
+  setBusy('single', true);
+  resetResult();
+
+  try {
+    const resp = await fetch(`${API_BASE}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    displayResult(result);
+    addHistory(result, data.Amount);
+    updateStats(result);
+    showToast(`Analysis complete — ${result.label}`, result.is_fraud ? 'error' : 'success');
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
+    console.error(e);
+  } finally {
+    setBusy('single', false);
+  }
+}
+
+async function runBatch() {
+  let transactions;
+  try {
+    transactions = JSON.parse(document.getElementById('batchInput').value);
+    if (!Array.isArray(transactions)) throw new Error('Input must be a JSON array');
+  } catch (e) {
+    showToast(`Invalid JSON: ${e.message}`, 'error');
+    return;
+  }
+
+  setBusy('batch', true);
+  document.getElementById('batchResults').style.display = 'none';
+
+  try {
+    const resp = await fetch(`${API_BASE}/predict/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transactions })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    displayBatchResult(result);
+    showToast(`Batch complete: ${result.fraud_count} fraud out of ${result.total}`, result.fraud_count > 0 ? 'error' : 'success');
+  } catch (e) {
+    showToast(`Error: ${e.message}`, 'error');
+    console.error(e);
+  } finally {
+    setBusy('batch', false);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   DISPLAY RESULT
+══════════════════════════════════════════════════ */
+function displayResult(r) {
+  const verdict = document.getElementById('verdict');
+  verdict.className = 'verdict ' + (r.is_fraud ? 'fraud' : 'legitimate');
+
+  const icon  = r.is_fraud ? '🚨' : '✅';
+  verdict.querySelector('.verdict-icon').textContent = icon;
+  verdict.querySelector('.verdict-label').textContent = r.label;
+  verdict.querySelector('.verdict-sub').textContent   =
+    r.is_fraud
+      ? `High risk — ${(r.fraud_probability * 100).toFixed(2)}% fraud probability`
+      : `Low risk — ${(r.fraud_probability * 100).toFixed(2)}% fraud probability`;
+
+  // Gauge
+  const pct = r.fraud_probability * 100;
+  const fill = document.getElementById('gaugeFill');
+  document.getElementById('gaugePct').textContent = `${pct.toFixed(2)}%`;
+  fill.style.width = `${pct}%`;
+  fill.style.background = pct > 70
+    ? `linear-gradient(90deg, var(--warn), var(--danger))`
+    : pct > 40
+      ? `linear-gradient(90deg, var(--accent), var(--warn))`
+      : `linear-gradient(90deg, var(--success), var(--accent))`;
+
+  // Meta
+  document.getElementById('metaConfidence').innerHTML =
+    `<span class="confidence ${r.confidence}">● ${r.confidence}</span>`;
+  document.getElementById('metaLatency').textContent  = r.latency_ms != null ? `${r.latency_ms} ms` : '—';
+  document.getElementById('metaVersion').textContent  = r.model_version || '—';
+  document.getElementById('metaReqId').textContent    = r.request_id ? r.request_id.split('-')[0] + '…' : '—';
+}
+
+function resetResult() {
+  const verdict = document.getElementById('verdict');
+  verdict.className = 'verdict idle';
+  verdict.querySelector('.verdict-icon').textContent = '🔮';
+  verdict.querySelector('.verdict-label').textContent = 'Awaiting Analysis';
+  verdict.querySelector('.verdict-sub').textContent = 'Submit a transaction to see the result';
+  document.getElementById('gaugeFill').style.width = '0%';
+  document.getElementById('gaugePct').textContent = '—';
+  ['metaConfidence','metaLatency','metaVersion','metaReqId'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+}
+
+function displayBatchResult(r) {
+  document.getElementById('br-total').textContent = r.total;
+  document.getElementById('br-fraud').textContent = r.fraud_count;
+  document.getElementById('br-rate').textContent  = `${r.fraud_rate_pct.toFixed(2)}%`;
+
+  const tbody = document.getElementById('batchTableBody');
+  tbody.innerHTML = '';
+  r.predictions.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.index + 1}</td>
+      <td><span class="badge ${p.is_fraud ? 'fraud' : 'legitimate'}">${p.is_fraud ? '🚨' : '✅'} ${p.label}</span></td>
+      <td>${(p.fraud_probability * 100).toFixed(2)}%</td>
+      <td><span class="confidence ${p.confidence}">● ${p.confidence}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('batchResults').style.display = 'block';
+}
+
+/* ══════════════════════════════════════════════════
+   HISTORY
+══════════════════════════════════════════════════ */
+function addHistory(result, amount) {
+  history.unshift({ result, amount, time: new Date() });
+  if (history.length > 50) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('historyContainer');
+  document.getElementById('histCount').textContent = `${history.length} record${history.length !== 1 ? 's' : ''}`;
+
+  if (history.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="em-icon">📊</div>No predictions yet.</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="history-table-wrap">
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Amount</th><th>Label</th><th>Probability</th><th>Latency</th></tr>
+        </thead>
+        <tbody>
+          ${history.map(h => `
+            <tr>
+              <td>${h.time.toLocaleTimeString()}</td>
+              <td>$${h.amount.toFixed(2)}</td>
+              <td><span class="badge ${h.result.is_fraud ? 'fraud' : 'legitimate'}">${h.result.is_fraud ? '🚨' : '✅'} ${h.result.label}</span></td>
+              <td>${(h.result.fraud_probability * 100).toFixed(2)}%</td>
+              <td>${h.result.latency_ms != null ? h.result.latency_ms + ' ms' : '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function clearHistory() {
+  history = [];
+  totalAnalyzed = 0; totalFraud = 0; latencies = [];
+  renderHistory();
+  updateStatDisplay();
+}
+
+/* ══════════════════════════════════════════════════
+   STATS
+══════════════════════════════════════════════════ */
+function updateStats(result) {
+  totalAnalyzed++;
+  if (result.is_fraud) totalFraud++;
+  if (result.latency_ms != null) latencies.push(result.latency_ms);
+  updateStatDisplay();
+}
+
+function updateStatDisplay() {
+  document.getElementById('statTotal').textContent  = totalAnalyzed.toLocaleString();
+  document.getElementById('statFraud').textContent  = totalFraud.toLocaleString();
+  document.getElementById('statRate').textContent   =
+    totalAnalyzed > 0 ? `${(totalFraud / totalAnalyzed * 100).toFixed(2)}%` : '0.00%';
+  document.getElementById('statLatency').textContent =
+    latencies.length > 0
+      ? `${(latencies.reduce((a,b)=>a+b,0)/latencies.length).toFixed(1)} ms`
+      : '—';
+}
+
+/* ══════════════════════════════════════════════════
+   BUSY STATE
+══════════════════════════════════════════════════ */
+function setBusy(mode, busy) {
+  if (mode === 'single') {
+    document.getElementById('btn-predict').disabled = busy;
+    document.getElementById('single-spinner').style.display = busy ? 'block' : 'none';
+  } else {
+    document.getElementById('btn-batch').disabled = busy;
+    document.getElementById('batch-spinner').style.display = busy ? 'block' : 'none';
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   BATCH SAMPLE
+══════════════════════════════════════════════════ */
+function loadBatchSample() {
+  const samples = [SAMPLE_LEGIT, SAMPLE_FRAUD, SAMPLE_LEGIT];
+  document.getElementById('batchInput').value = JSON.stringify(samples, null, 2);
+  showToast('Sample batch loaded (2 legit + 1 fraud)', 'info');
+}
+
+/* ══════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════ */
+function showToast(msg, type = 'info', duration = 4000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, duration);
+}
+
+/* ══════════════════════════════════════════════════
+   API HEALTH CHECK
+══════════════════════════════════════════════════ */
+async function checkHealth() {
+  const dot  = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  try {
+    const resp = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      dot.className = 'status-dot online';
+      text.textContent = `API Online — v${data.version || '1.0.0'}`;
+    } else {
+      dot.className = 'status-dot offline';
+      text.textContent = `API Error (${resp.status})`;
+    }
+  } catch {
+    dot.className = 'status-dot offline';
+    text.textContent = 'API Offline';
+  }
+}
+
+// Initial check + repeat every 30s
+checkHealth();
+setInterval(checkHealth, 30000);
+
+// Initial render
+renderHistory();
+</script>
+</body>
+</html>

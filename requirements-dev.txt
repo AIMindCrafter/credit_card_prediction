@@ -1,0 +1,14 @@
+# Development & Testing Dependencies
+-r requirements.txt
+
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+httpx==0.28.1
+ruff==0.8.6
+mypy==1.13.0
+pre-commit==4.0.1
+ipykernel==6.29.5
+matplotlib==3.9.4
+seaborn==0.13.2
+imbalanced-learn==0.13.0
